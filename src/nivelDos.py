@@ -28,7 +28,8 @@ class NivelDos:
         self.dialogoBase = 'Prólogo: ocurrió un terremoto que separó a Rumi de su padre. Ya no lo encuentra. Busca el farol para guiarte por el camino.'
         self.dialogo = self.dialogoBase
         self.dialogoTemporal = self.dialogoBase
-        self.tiempoDialogo = 5.0
+        self.tiempoDialogo = 7.0
+        self.fadeDialogo = 0.0
         self.temblor = 0.0
         self.ayudas = [
             'Ignora a esos insectos: solo te están molestando.',
@@ -37,19 +38,33 @@ class NivelDos:
         ]
         self.indiceAyuda = 0
         self.terremotoIniciado = False
+        self.tiempoTerremoto = 0.0
+
+    @property
+    def dialogoAlpha(self) -> int:
+        if self.tiempoDialogo > 0.0:
+            return 255
+        if self.fadeDialogo > 0.0:
+            return int(255 * max(0.0, min(1.0, self.fadeDialogo / 1.2)))
+        return 0
 
     def reiniciar(self):
         self.__init__(self.recursos)
 
-    def mostrarDialogo(self, texto, duracion=5.0):
+    def mostrarDialogo(self, texto, duracion=7.0):
         self.dialogo = texto
         self.dialogoTemporal = texto
         self.tiempoDialogo = duracion
+        self.fadeDialogo = 0.0
 
     def actualizarDialogo(self, deltaTiempo):
         if self.tiempoDialogo > 0:
             self.tiempoDialogo = max(0.0, self.tiempoDialogo - deltaTiempo)
             if self.tiempoDialogo == 0.0:
+                self.fadeDialogo = 1.2
+        elif self.fadeDialogo > 0:
+            self.fadeDialogo = max(0.0, self.fadeDialogo - deltaTiempo)
+            if self.fadeDialogo == 0.0:
                 self.dialogo = self.dialogoBase
                 self.dialogoTemporal = self.dialogoBase
 
@@ -69,13 +84,23 @@ class NivelDos:
             return ResultadoActualizacionNivel()
         self.actualizarDialogo(deltaTiempo)
         self.temblor = max(0.0, self.temblor - deltaTiempo)
+        if self.terremotoIniciado:
+            self.tiempoTerremoto = max(0.0, self.tiempoTerremoto - deltaTiempo)
+            if self.tiempoTerremoto == 0.0:
+                self.estado = EstadoNivelDos.COMPLETADO
+                self.rumi.velocidad = Vector2D(0,0)
+                self.dialogo = 'Farol recuperado. Las voces del Velo no decidieron tu camino. Escape: menú; R: repetir.'
+                return ResultadoActualizacionNivel(
+                    terremotoIniciado=True,
+                    nivelCompletado=True,
+                )
         self.vitalidad.actualizar(deltaTiempo)
         self.recargaLuz = max(0.0, self.recargaLuz - deltaTiempo)
         activarLuz = entrada.usarGarras and self.recargaLuz == 0
         if activarLuz:
             self.recargaLuz = 0.65
             self.indiceAyuda = (self.indiceAyuda + 1) % len(self.ayudas)
-            self.mostrarDialogo(self.ayudas[self.indiceAyuda], 5.0)
+            self.mostrarDialogo(self.ayudas[self.indiceAyuda], 7.0)
         entrada = replace(entrada, usarGarras=activarLuz)
         anteriorY = self.rumi.posicion.y
         estabaEnSuelo = self.rumi.estaEnSuelo
@@ -100,13 +125,14 @@ class NivelDos:
             self.dialogo = 'Farol recuperado. Las voces del Velo no decidieron tu camino. Escape: menú; R: repetir.'
         if self.dialogo == self.dialogoBase and not self.terremotoIniciado:
             self.terremotoIniciado = True
+            self.tiempoTerremoto = 3.0
             self.temblor = 2.4
             self.dialogo = '¡Un terremoto! ¡Corre!'
             self.dialogoTemporal = self.dialogo
-            self.tiempoDialogo = 2.0
+            self.tiempoDialogo = 7.0
         return ResultadoActualizacionNivel(
             saltoIniciado=salto, aterrizaje=aterrizaje, golpeRecibido=golpe,
             derrotaIniciada=self.estado == EstadoNivelDos.DERROTADO,
             nivelCompletado=self.estado == EstadoNivelDos.COMPLETADO,
-            terremotoIniciado=self.terremotoIniciado,
+            terremotoIniciado=self.terremotoIniciado and self.tiempoTerremoto > 0.0,
         )

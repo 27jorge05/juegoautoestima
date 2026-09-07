@@ -85,7 +85,7 @@ class SonidosJuego:
     def reproducirDerrumbe(self) -> None:
         if self.derrumbe is not None:
             self.canalDerrumbe = self.derrumbe.play()
-            self.tiempoDerrumbe = 2.0
+            self.tiempoDerrumbe = 3.0
 
     def reproducirAmbienteInicial(self) -> None:
         if self.ambiente is not None:

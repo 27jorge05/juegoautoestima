@@ -95,10 +95,13 @@ class DibujadorNivelDos:
         self.corazones.dibujar(self.pantalla,nivel.vitalidad.puntos,3,w-180,27,self.destelloDanio.activo)
         tramo=next((t.nombre for t in nivel.escenario.tramos if t.inicio <= nivel.rumi.posicion.x < t.fin),'Farol del Nombre')
         self.pantalla.blit(self.fuente.render(tramo,True,(166,209,221)),(28,62))
-        panel=pygame.Surface((w-48,116),pygame.SRCALPHA);panel.fill((12,15,31,225))
+        panel=pygame.Surface((w-48,116),pygame.SRCALPHA)
+        panel.fill((12,15,31,int(225 * (nivel.dialogoAlpha / 255.0))))
         self.pantalla.blit(panel,(24,h-136))
         for i,linea in enumerate(ajustarTexto(nivel.dialogo,self.fuente,w-96)):
-            self.pantalla.blit(self.fuente.render(linea,True,(233,235,249)),(44,h-126+i*26))
+            texto=self.fuente.render(linea,True,(233,235,249))
+            texto.set_alpha(nivel.dialogoAlpha)
+            self.pantalla.blit(texto,(44,h-126+i*26))
         luz='lista' if nivel.recargaLuz == 0 else f'{nivel.recargaLuz:.1f}s'
         ayuda=f'Espacio: saltar | F: luz ({luz}) | R: reiniciar | Escape: menú'
         self.pantalla.blit(self.fuente.render(ayuda,True,(158,217,213)),(44,h-49))

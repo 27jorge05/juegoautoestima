@@ -117,20 +117,20 @@ class DibujadorNivelUno:
             27,
             self.destelloDanio.activo,
         )
+        alfa = nivel.dialogoAlpha
         fondo = pygame.Surface((ANCHO_VENTANA - 56, 112), pygame.SRCALPHA)
-        fondo.fill((11, 17, 25, 210))
+        fondo.fill((11, 17, 25, int(210 * (alfa / 255.0))))
         self.pantalla.blit(fondo, (28, ALTO_VENTANA - 138))
         for indice, linea in enumerate(ajustarTexto(nivel.dialogo, self.fuente, ANCHO_VENTANA - 96)):
             texto = self.fuente.render(linea, True, (242, 245, 248))
+            texto.set_alpha(alfa)
             self.pantalla.blit(texto, (48, ALTO_VENTANA - 116 + indice * 27))
         estado = self.fuente.render(
-            f"Espacio: salto  |  F: luz ({'lista' if nivel.recargaLuz == 0 else f'{nivel.recargaLuz:.1f}s'})  |  R: reiniciar",
+            "Espacio: salto  |  R: reiniciar",
             True,
             (181, 211, 222),
         )
         self.pantalla.blit(estado, (48, ALTO_VENTANA - 49))
-
-
 
 
 def ajustarTexto(texto, fuente, ancho):

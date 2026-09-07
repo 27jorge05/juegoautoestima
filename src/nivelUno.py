@@ -24,25 +24,39 @@ class NivelUno:
         self.padre = mundo.padre
         self.vitalidad = Vitalidad()
         self.recargaLuz = 0.0
-        self.dialogoBase = "Encuentra a papá al final del camino. Esquiva al Velo o usa F cerca para liberar sus criaturas."
+        self.dialogoBase = "Encuentra a tu padre al final del camino."
         self.dialogo = self.dialogoBase
         self.dialogoTemporal = self.dialogoBase
         self.tiempoDialogo = 0.0
+        self.fadeDialogo = 0.0
         self.temblor = 0.0
         self.fHabilitada = False
 
     def reiniciar(self) -> None:
         self.__init__(self.recursos)
 
-    def mostrarDialogo(self, texto: str, duracion: float = 5.0) -> None:
+    @property
+    def dialogoAlpha(self) -> int:
+        if self.tiempoDialogo > 0.0:
+            return 255
+        if self.fadeDialogo > 0.0:
+            return int(255 * max(0.0, min(1.0, self.fadeDialogo / 1.2)))
+        return 0
+
+    def mostrarDialogo(self, texto: str, duracion: float = 7.0) -> None:
         self.dialogo = texto
         self.dialogoTemporal = texto
         self.tiempoDialogo = duracion
+        self.fadeDialogo = 0.0
 
     def actualizarDialogo(self, deltaTiempo: float) -> None:
         if self.tiempoDialogo > 0.0:
             self.tiempoDialogo = max(0.0, self.tiempoDialogo - deltaTiempo)
             if self.tiempoDialogo == 0.0:
+                self.fadeDialogo = 1.2
+        elif self.fadeDialogo > 0.0:
+            self.fadeDialogo = max(0.0, self.fadeDialogo - deltaTiempo)
+            if self.fadeDialogo == 0.0:
                 self.dialogo = self.dialogoBase
                 self.dialogoTemporal = self.dialogoBase
 
@@ -70,11 +84,6 @@ class NivelUno:
         fuerzaSalto: float,
         limiteCaida: float,
     ) -> ResultadoActualizacionNivel:
-        """Actualiza las reglas de este escenario y devuelve sus eventos observables.
-
-        No dibuja ni reproduce audio. Así el nivel conserva sus reglas aunque se
-        cambie Pygame por otra interfaz en el futuro.
-        """
         if entrada.reiniciar:
             self.reiniciar()
             return ResultadoActualizacionNivel()
@@ -85,10 +94,8 @@ class NivelUno:
         rumi = self.rumi
         self.vitalidad.actualizar(deltaTiempo)
         self.recargaLuz = max(0.0, self.recargaLuz - deltaTiempo)
-        activarLuz = entrada.usarGarras and self.fHabilitada and self.recargaLuz == 0.0
-        if activarLuz:
-            self.recargaLuz = 0.65
-        entrada = replace(entrada, usarGarras=activarLuz)
+        activarLuz = False
+        entrada = replace(entrada, usarGarras=False)
         posicionAnteriorY = rumi.posicion.y
         estabaEnSuelo = rumi.estaEnSuelo
         veniaCayendo = rumi.velocidad.y > 80.0
@@ -101,7 +108,7 @@ class NivelUno:
         )
 
         saltoIniciado = entrada.saltar and estabaEnSuelo
-        solicitaSegundoSalto = entrada.saltar and not estabaEnSuelo
+        solicitaSegundoSalto = False
         impulsoRoca = self.actualizarElementos(solicitaSegundoSalto, deltaTiempo)
         if not impulsoRoca:
             rumi.resolverSuelo(self.escenario.geometriaSuelo, posicionAnteriorY)
@@ -141,7 +148,8 @@ class NivelUno:
         if self.rumi.posicion.x >= self.metaX - 200 and self.secuencia.estado == EstadoNivel.SEGUIR_PADRE:
             self.dialogo = "Papá: ¡Corre! ¡El suelo se mueve!"
             self.dialogoTemporal = self.dialogo
-            self.tiempoDialogo = 3.0
+            self.tiempoDialogo = 7.0
+            self.fadeDialogo = 0.0
             self.temblor = 2.2
         if self.rumi.rectangulo.intersecta(self.padre.rectangulo):
             self.secuencia.encontrarPadre()
