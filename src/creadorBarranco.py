@@ -1,9 +1,10 @@
 """Construcción del Barranco; concentra mapa y posiciones de sus entidades."""
 from dataclasses import dataclass
 from .dominio import RectanguloLogico, Vector2D, Padre
-from .elementosNivel import ConfiguracionNiebla, ConfiguracionRocaImpulso, NieblaNivel, RocaImpulso
+from .elementosNivel import ConfiguracionRocaImpulso, RocaImpulso
 from .escenarioNivel import EscenarioNivel, TramoNivel
-from .enemigosNivel import EnemigoNivel, TipoEnemigo
+from .enemigosNivel import TipoEnemigo
+from .enemigoHostil import EnemigoHostil
 from .plataformaNivel import PlataformaNivel, TipoTerreno, DecoracionNivel, TipoDecoracion
 
 
@@ -31,24 +32,8 @@ class CreadorBarrancoVelo:
                 ConfiguracionRocaImpulso(RectanguloLogico(950.0, 515.0, 130.0, 65.0))
             ),
         ]
-        self.niebla = NieblaNivel(
-            ConfiguracionNiebla(RectanguloLogico(430.0, 0.0, 470.0, 720.0))
-        )
-        self.escenario = EscenarioNivel(self.recursos, plataformas, [*rocasImpulso, self.niebla])
-        self.zonaTerremoto = ZonaNivel(
-            "terremoto", RectanguloLogico(820.0, 0.0, 100.0, 720.0)
-        )
-        self.zonaMadriguera = ZonaNivel(
-            "madriguera", RectanguloLogico(1170.0, 480.0, 140.0, 100.0)
-        )
-        self.zonaPajarito = ZonaNivel(
-            "pajarito", RectanguloLogico(1370.0, 400.0, 130.0, 180.0)
-        )
-        self.zonaSalida = ZonaNivel(
-            "salida", RectanguloLogico(1660.0, 450.0, 120.0, 130.0)
-        )
-        self.padre = Padre(Vector2D(350.0, 526.0))
-        self.pajaritoPosicion = Vector2D(1420.0, 410.0)
+        # El Barranco no usa niebla: la dificultad es seguir a papá y encontrarlo al final.
+        self.escenario = EscenarioNivel(self.recursos, plataformas, rocasImpulso)
         self.escenario.decoraciones = [
             DecoracionNivel(TipoDecoracion.HUELLA, x, 572 if i % 2 == 0 else 576)
             for i, x in enumerate(range(180, 820, 64))
@@ -56,19 +41,30 @@ class CreadorBarrancoVelo:
         self.escenario.tramos = [TramoNivel("Camino del Alba", 0, 1880)]
         for nombre, inicio, fin, material in (
             ("Raíces del bosque", 1880, 3000, TipoTerreno.BOSQUE),
-            ("Claro de susurros", 3000, 4120, TipoTerreno.ROCA_NIEBLA),
+            ("Claro de susurros", 3000, 4120, TipoTerreno.BOSQUE),
             ("Sendero de cristal", 4120, 5240, TipoTerreno.CRISTAL),
             ("Umbral luminoso", 5240, 6360, TipoTerreno.RUINAS),
         ):
             self.agregarTramo(nombre, inicio, fin, material)
         self.escenario.ancho = self.escenario.tramos[-1].fin
         self.metaX = self.escenario.ancho - 100
+        self.padre = Padre(Vector2D(self.metaX, 526.0))
         self.escenario.enemigos = [
-            EnemigoNivel(TipoEnemigo.SUSURRO, Vector2D(3220, 534)),
-            EnemigoNivel(TipoEnemigo.SUSURRO, Vector2D(3340, 534)),
-            EnemigoNivel(TipoEnemigo.ESPEJILLA, Vector2D(4520, 510)),
-            EnemigoNivel(TipoEnemigo.ESPEJILLA, Vector2D(4830, 510)),
+            self.crearEnemigo(TipoEnemigo.SUSURRO, 3220, 534, "No llegarás con tu papá."),
+            self.crearEnemigo(TipoEnemigo.SUSURRO, 3540, 534, "No puedes seguir."),
+            self.crearEnemigo(TipoEnemigo.ESPEJILLA, 4520, 455, "Te vas a perder."),
+            self.crearEnemigo(TipoEnemigo.ESPEJILLA, 5140, 455, "Vuelve atrás."),
         ]
+
+    @staticmethod
+    def crearEnemigo(tipo, x, y, frase):
+        return EnemigoHostil(
+            tipo,
+            Vector2D(x, y),
+            x - 150,
+            x + 180,
+            frase,
+        )
 
     def agregarTramo(self, nombre, inicio, fin, material):
         """Módulo reutilizable de suelo continuo y plataformas opcionales."""

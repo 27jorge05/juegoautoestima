@@ -7,6 +7,7 @@ from .dibujadorNivelUno import ajustarTexto
 from .estadoVisual import obtenerAnimacionRumi
 from .enemigoHostil import EstadoEnemigo
 from .nivelDos import EstadoNivelDos
+from .indicadoresVida import CorazonesVida, DestelloDanio
 
 
 class DibujadorNivelDos:
@@ -21,6 +22,8 @@ class DibujadorNivelDos:
         self.fuente = pygame.font.SysFont('sans',22)
         self.titulo = pygame.font.SysFont('sans',32,bold=True)
         self.tiempoEfectoSalto = 0.0
+        self.destelloDanio = DestelloDanio()
+        self.corazones = CorazonesVida(self.fuente)
 
     def reiniciar(self):
         self.animacion.reiniciar()
@@ -29,8 +32,12 @@ class DibujadorNivelDos:
     def registrarSalto(self,x,y):
         self.tiempoEfectoSalto = .2
 
+    def registrarGolpe(self):
+        self.destelloDanio.activar()
+
     def actualizar(self,nivel,deltaTiempo):
         self.tiempoEfectoSalto = max(0.0,self.tiempoEfectoSalto-deltaTiempo)
+        self.destelloDanio.actualizar(deltaTiempo)
         rumi=nivel.rumi
         nombre = 'cansado' if nivel.estado == EstadoNivelDos.DERROTADO else obtenerAnimacionRumi(rumi.velocidad.x,rumi.velocidad.y,rumi.estaEnSuelo,rumi.garrasActivas)
         if nivel.estado != EstadoNivelDos.JUGANDO:
@@ -39,6 +46,11 @@ class DibujadorNivelDos:
             self.animacion.actualizar(nombre,deltaTiempo)
 
     def dibujar(self,nivel,camara):
+        if nivel.temblor > 0:
+            w,h=self.pantalla.get_size()
+            flash=pygame.Surface((w,h),pygame.SRCALPHA)
+            flash.fill((255,110,90,min(130,int(180*(nivel.temblor/2.4)))))
+            self.pantalla.blit(flash,(0,0))
         self.escenario.dibujarMundo(nivel.escenario,None,camara)
         rumi=nivel.rumi
         pies=(round(rumi.posicion.x+rumi.ancho/2-camara),round(rumi.rectangulo.abajo))
@@ -57,6 +69,7 @@ class DibujadorNivelDos:
         self.dibujarInterfaz(nivel)
         if nivel.estado != EstadoNivelDos.JUGANDO:
             self.dibujarFinal(nivel)
+        self.destelloDanio.dibujar(self.pantalla)
 
     def dibujarAvisos(self,nivel,camara):
         for enemigo in nivel.escenario.enemigos:
@@ -79,8 +92,7 @@ class DibujadorNivelDos:
     def dibujarInterfaz(self,nivel):
         w,h=self.pantalla.get_size()
         self.pantalla.blit(self.titulo.render('Espejos de Niebla',True,(230,222,255)),(28,20))
-        vidas=self.fuente.render(f'Vidas: {nivel.vitalidad.puntos}/3',True,(255,206,183))
-        self.pantalla.blit(vidas,(w-160,26))
+        self.corazones.dibujar(self.pantalla,nivel.vitalidad.puntos,3,w-180,27,self.destelloDanio.activo)
         tramo=next((t.nombre for t in nivel.escenario.tramos if t.inicio <= nivel.rumi.posicion.x < t.fin),'Farol del Nombre')
         self.pantalla.blit(self.fuente.render(tramo,True,(166,209,221)),(28,62))
         panel=pygame.Surface((w-48,116),pygame.SRCALPHA);panel.fill((12,15,31,225))
@@ -95,8 +107,19 @@ class DibujadorNivelDos:
         w,h=self.pantalla.get_size()
         capa=pygame.Surface((w,h),pygame.SRCALPHA);capa.fill((10,12,26,165))
         self.pantalla.blit(capa,(0,0))
-        titulo='Rumi ha caído' if nivel.estado == EstadoNivelDos.DERROTADO else 'Farol recuperado'
-        for i,texto in enumerate((titulo,'Un intento no decide lo que puedes aprender.','R: volver a jugar    |    Escape: menú')):
+        if nivel.estado == EstadoNivelDos.COMPLETADO:
+            textos=(
+                'Farol recuperado',
+                'Ya no encuentras a tu padre. Busca el farol para seguir el camino.',
+                'Siguiente nivel: bloqueado (nivel 3 en construcción)  |  R: volver a jugar  |  Escape: menú',
+            )
+        else:
+            textos=(
+                'Rumi ha caído',
+                'Un intento no decide lo que puedes aprender.',
+                'R: volver a jugar    |    Escape: menú',
+            )
+        for i,texto in enumerate(textos):
             fuente=self.titulo if i==0 else self.fuente
             imagen=fuente.render(texto,True,(240,230,255))
             self.pantalla.blit(imagen,((w-imagen.get_width())//2,h//2-60+i*48))

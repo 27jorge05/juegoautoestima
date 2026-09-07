@@ -191,3 +191,8 @@ class SecuenciaNivelUno:
     def completar(self) -> None:
         if self.estado == EstadoNivel.SALIDA:
             self.estado = EstadoNivel.COMPLETADO
+
+    def encontrarPadre(self) -> None:
+        """El cierre del Barranco ocurre al reunirse con su padre."""
+        if self.estado != EstadoNivel.COMPLETADO:
+            self.estado = EstadoNivel.COMPLETADO

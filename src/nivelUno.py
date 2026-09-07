@@ -4,15 +4,12 @@ from __future__ import annotations
 
 from .eventosNivel import ResultadoActualizacionNivel
 
-from .dominio import (
-    EntradaJugador,
-    EstadoNivel,
-    Rumi,
-    SecuenciaNivelUno,
-    Vector2D,
-)
+from dataclasses import replace
+
+from .dominio import EntradaJugador, EstadoNivel, Rumi, SecuenciaNivelUno, Vector2D
 from .creadorBarranco import CreadorBarrancoVelo
 from .recursosNivel import SeleccionRecursosNivel, crearRecursosBarrancoVelo
+from .vitalidad import Vitalidad
 
 
 class NivelUno:
@@ -24,17 +21,30 @@ class NivelUno:
         mundo = CreadorBarrancoVelo(self.recursos)
         self.escenario = mundo.escenario
         self.metaX = mundo.metaX
-        self.niebla = mundo.niebla
-        self.zonaTerremoto = mundo.zonaTerremoto
-        self.zonaMadriguera = mundo.zonaMadriguera
-        self.zonaPajarito = mundo.zonaPajarito
-        self.zonaSalida = mundo.zonaSalida
         self.padre = mundo.padre
-        self.pajaritoPosicion = mundo.pajaritoPosicion
-        self.dialogo = "Sigue a tu padre con A/D o flechas. Salta con Espacio."
+        self.vitalidad = Vitalidad()
+        self.recargaLuz = 0.0
+        self.dialogoBase = "Encuentra a papá al final del camino. Esquiva al Velo o usa F cerca para liberar sus criaturas."
+        self.dialogo = self.dialogoBase
+        self.dialogoTemporal = self.dialogoBase
+        self.tiempoDialogo = 0.0
+        self.temblor = 0.0
+        self.fHabilitada = False
 
     def reiniciar(self) -> None:
         self.__init__(self.recursos)
+
+    def mostrarDialogo(self, texto: str, duracion: float = 5.0) -> None:
+        self.dialogo = texto
+        self.dialogoTemporal = texto
+        self.tiempoDialogo = duracion
+
+    def actualizarDialogo(self, deltaTiempo: float) -> None:
+        if self.tiempoDialogo > 0.0:
+            self.tiempoDialogo = max(0.0, self.tiempoDialogo - deltaTiempo)
+            if self.tiempoDialogo == 0.0:
+                self.dialogo = self.dialogoBase
+                self.dialogoTemporal = self.dialogoBase
 
     @property
     def padrePosicion(self) -> Vector2D:
@@ -44,15 +54,6 @@ class NivelUno:
     @padrePosicion.setter
     def padrePosicion(self, posicion: Vector2D) -> None:
         self.padre.reubicar(posicion)
-
-    def estaEnNiebla(self) -> bool:
-        return self.escenario.contieneElemento(self.niebla) and self.niebla.contiene(self.rumi)
-
-    def velocidadEnNiebla(self, velocidadNormal: float) -> float:
-        """La niebla vuelve prudente el avance; la luz del padre protege el inicio."""
-        if not self.escenario.contieneElemento(self.niebla):
-            return velocidadNormal
-        return self.niebla.velocidadPermitida(self.rumi, self.padre, velocidadNormal)
 
     def actualizarElementos(
         self, solicitaSegundoSalto: bool, deltaTiempo: float
@@ -78,7 +79,16 @@ class NivelUno:
             self.reiniciar()
             return ResultadoActualizacionNivel()
 
+        self.actualizarDialogo(deltaTiempo)
+        self.temblor = max(0.0, self.temblor - deltaTiempo)
+
         rumi = self.rumi
+        self.vitalidad.actualizar(deltaTiempo)
+        self.recargaLuz = max(0.0, self.recargaLuz - deltaTiempo)
+        activarLuz = entrada.usarGarras and self.fHabilitada and self.recargaLuz == 0.0
+        if activarLuz:
+            self.recargaLuz = 0.65
+        entrada = replace(entrada, usarGarras=activarLuz)
         posicionAnteriorY = rumi.posicion.y
         estabaEnSuelo = rumi.estaEnSuelo
         veniaCayendo = rumi.velocidad.y > 80.0
@@ -86,7 +96,7 @@ class NivelUno:
             entrada,
             deltaTiempo,
             gravedad,
-            self.velocidadEnNiebla(velocidadNormal),
+            velocidadNormal,
             fuerzaSalto,
         )
 
@@ -99,7 +109,7 @@ class NivelUno:
         aterrizaje = not estabaEnSuelo and rumi.estaEnSuelo and veniaCayendo
         if rumi.posicion.y > limiteCaida:
             self.reiniciar()
-            self.dialogo = "Rumi cayó en la niebla. Respira y vuelve a intentarlo."
+            self.dialogo = "Rumi cayó del camino. Respira y vuelve a intentarlo."
             return ResultadoActualizacionNivel(
                 saltoIniciado=saltoIniciado,
                 impulsoRoca=impulsoRoca,
@@ -109,62 +119,34 @@ class NivelUno:
 
         rumi.posicion.x = max(0.0, min(rumi.posicion.x, self.escenario.ancho - rumi.ancho))
 
-        if entrada.interactuar:
-            self.interactuar()
-        estadoAnterior = self.secuencia.estado
+        golpe = False
+        for enemigo in self.escenario.enemigos:
+            if enemigo.actualizar(rumi, deltaTiempo):
+                golpe = self.vitalidad.recibirGolpe() or golpe
+        if self.vitalidad.agotada:
+            self.reiniciar()
+            self.dialogo = "El Velo agotó las vidas de Rumi. Respira y vuelve a intentarlo."
+            return ResultadoActualizacionNivel(golpeRecibido=golpe, reiniciadoPorCaida=True)
+
         self.actualizarNarrativa()
-        terremotoIniciado = (
-            estadoAnterior != EstadoNivel.TERREMOTO
-            and self.secuencia.estado == EstadoNivel.TERREMOTO
-        )
         return ResultadoActualizacionNivel(
             saltoIniciado=saltoIniciado,
             impulsoRoca=impulsoRoca,
             aterrizaje=aterrizaje,
-            terremotoIniciado=terremotoIniciado,
+            golpeRecibido=golpe,
+            nivelCompletado=self.secuencia.estado == EstadoNivel.COMPLETADO,
         )
 
     def actualizarNarrativa(self) -> None:
-        posicion = self.rumi.rectangulo
-        if self.escenario.contieneElemento(self.niebla) and self.secuencia.estado == EstadoNivel.SEGUIR_PADRE and posicion.intersecta(
-            self.niebla.rectangulo
-        ):
-            self.secuencia.activarNiebla()
-            self.niebla.activar()
-            self.dialogo = (
-                "La niebla cubre el sendero. Las garras de papá iluminan el camino."
+        if self.rumi.posicion.x >= self.metaX - 200 and self.secuencia.estado == EstadoNivel.SEGUIR_PADRE:
+            self.dialogo = "Papá: ¡Corre! ¡El suelo se mueve!"
+            self.dialogoTemporal = self.dialogo
+            self.tiempoDialogo = 3.0
+            self.temblor = 2.2
+        if self.rumi.rectangulo.intersecta(self.padre.rectangulo):
+            self.secuencia.encontrarPadre()
+            self.mostrarDialogo(
+                "Te encontré, Rumi. Ten cuidado con esos insectos: solo te están molestando. "
+                "Ignóralos. Tú puedes, yo puedo, soy suficiente."
             )
-            return
-        if self.secuencia.estado == EstadoNivel.NIEBLA and posicion.intersecta(
-            self.zonaTerremoto.rectangulo
-        ):
-            self.secuencia.activarTerremoto()
-            self.dialogo = "¡El suelo tiembla! Papá te impulsa al otro lado: ‘Te encontraré más adelante’."
-            self.padre.reubicar(Vector2D(770.0, 526.0))
-            return
-        if self.secuencia.estado == EstadoNivel.TERREMOTO and posicion.intersecta(
-            self.zonaMadriguera.rectangulo
-        ):
-            self.secuencia.llegarMadriguera()
-            self.rumi.estaEscondido = True
-            self.dialogo = "Rumi se esconde en la madriguera. Presiona E junto al pajarito para escucharle."
-            return
-        if self.secuencia.estado == EstadoNivel.PAJARITO and posicion.intersecta(
-            self.zonaSalida.rectangulo
-        ):
-            self.secuencia.salirMadriguera()
-            self.rumi.estaEscondido = False
-            self.rumi.luz = 0.65
-            self.dialogo = (
-                "Rumi sale. Sigue las huellas. F: ilumina a las criaturas del Velo."
-            )
-            return
-        if self.secuencia.estado == EstadoNivel.SALIDA and posicion.x >= self.metaX:
-            self.secuencia.completar()
-            self.dialogo = "Nivel completado: la aventura de Rumi comienza ahora."
-
-    def interactuar(self) -> None:
-        cercaPajarito = abs(self.rumi.posicion.x - self.pajaritoPosicion.x) < 100.0
-        if self.secuencia.estado == EstadoNivel.MADRIGUERA and cercaPajarito:
-            self.secuencia.hablarConPajarito()
-            self.dialogo = "Pajarito: ‘No necesitas ver todo el camino. Solo busca la próxima luz’."
+            self.temblor = 1.8

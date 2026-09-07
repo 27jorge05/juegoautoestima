@@ -1,113 +1,72 @@
-"""Evaluación de las transiciones y componentes del Nivel 01."""
+"""Reglas del Barranco: sin niebla, criaturas hostiles y encuentro con papá."""
 
 import unittest
 
-from src.dominio import EstadoNivel, Vector2D
+from src.configuracion import FUERZA_SALTO, GRAVEDAD, VELOCIDAD_RUMI
+from src.dominio import EntradaJugador, EstadoNivel, Vector2D
+from src.enemigoHostil import EstadoEnemigo
 from src.nivelUno import NivelUno
 
 
 class PruebasNivelUno(unittest.TestCase):
-    def setUp(self) -> None:
-        self.nivel = NivelUno()
+    def actualizar(self, nivel, entrada=EntradaJugador(), dt=1 / 60):
+        return nivel.actualizar(
+            entrada, dt, GRAVEDAD, VELOCIDAD_RUMI, FUERZA_SALTO, 840
+        )
 
-    def moverRumiA(self, x: float, y: float = 534.0) -> None:
-        self.nivel.rumi.posicion = Vector2D(x, y)
+    def testIniciaBuscandoAlPadreSinNiebla(self):
+        nivel = NivelUno()
+        self.assertEqual(nivel.secuencia.estado, EstadoNivel.SEGUIR_PADRE)
+        self.assertFalse(any(elemento.__class__.__name__ == "NieblaNivel" for elemento in nivel.escenario.elementos))
+        self.assertIn("papá", nivel.dialogo)
 
-    def testIniciaSiguiendoAlPadre(self) -> None:
-        self.assertEqual(self.nivel.secuencia.estado, EstadoNivel.SEGUIR_PADRE)
+    def testPadreEsperaEnElUltimoTramo(self):
+        nivel = NivelUno()
+        self.assertGreater(nivel.padre.posicion.x, 6000)
+        self.assertEqual(nivel.padre.posicion.x, nivel.metaX)
 
-    def testEntrarEnNieblaCambiaEstado(self) -> None:
-        self.moverRumiA(450)
-        self.nivel.actualizarNarrativa()
-        self.assertEqual(self.nivel.secuencia.estado, EstadoNivel.NIEBLA)
+    def testEncontrarPadreCompletaNivel(self):
+        nivel = NivelUno()
+        nivel.rumi.posicion = Vector2D(nivel.padre.posicion.x, nivel.padre.posicion.y)
+        nivel.actualizarNarrativa()
+        self.assertEqual(nivel.secuencia.estado, EstadoNivel.COMPLETADO)
+        self.assertIn("Encontraste", nivel.dialogo)
 
-    def testTerremotoRequiereNieblaPrevia(self) -> None:
-        self.moverRumiA(850)
-        self.nivel.actualizarNarrativa()
-        self.assertEqual(self.nivel.secuencia.estado, EstadoNivel.NIEBLA)
+    def testBichosUsanEstadosHostiles(self):
+        nivel = NivelUno()
+        enemigo = nivel.escenario.enemigos[0]
+        nivel.rumi.posicion = Vector2D(enemigo.posicion.x, enemigo.posicion.y)
+        self.actualizar(nivel)
+        self.assertEqual(enemigo.estado, EstadoEnemigo.AVISO)
+        self.actualizar(nivel, dt=enemigo.duracionAviso)
+        self.assertEqual(enemigo.estado, EstadoEnemigo.ATAQUE)
 
-    def testTerremotoMueveAlPadreAlBorde(self) -> None:
-        self.moverRumiA(450)
-        self.nivel.actualizarNarrativa()
-        self.moverRumiA(850)
-        self.nivel.actualizarNarrativa()
-        self.assertEqual(self.nivel.padrePosicion.x, 770.0)
+    def testGolpeRestaUnaVidaConInvulnerabilidad(self):
+        nivel = NivelUno()
+        enemigo = nivel.escenario.enemigos[0]
+        enemigo.posicion = Vector2D(110, 534)
+        enemigo.limiteIzquierdo = 0
+        enemigo.estado = EstadoEnemigo.ATAQUE
+        enemigo.objetivo = Vector2D(110, 534)
+        evento = self.actualizar(nivel)
+        self.assertTrue(evento.golpeRecibido)
+        self.assertEqual(nivel.vitalidad.puntos, 2)
+        enemigo.estado = EstadoEnemigo.ATAQUE
+        self.actualizar(nivel)
+        self.assertEqual(nivel.vitalidad.puntos, 2)
 
-    def testMadrigueraRequiereTerremoto(self) -> None:
-        self.moverRumiA(1200)
-        self.nivel.actualizarNarrativa()
-        self.assertNotEqual(self.nivel.secuencia.estado, EstadoNivel.MADRIGUERA)
+    def testLuzLiberaBichoCercanoConRecarga(self):
+        nivel = NivelUno()
+        enemigo = nivel.escenario.enemigos[0]
+        nivel.rumi.posicion = Vector2D(enemigo.posicion.x, enemigo.posicion.y)
+        self.actualizar(nivel, EntradaJugador(usarGarras=True))
+        self.assertTrue(enemigo.liberado)
+        self.assertGreater(nivel.recargaLuz, 0)
 
-    def testMadrigueraActivaEscondite(self) -> None:
-        self.moverRumiA(450)
-        self.nivel.actualizarNarrativa()
-        self.moverRumiA(850)
-        self.nivel.actualizarNarrativa()
-        self.moverRumiA(1200)
-        self.nivel.actualizarNarrativa()
-        self.assertTrue(self.nivel.rumi.estaEscondido)
-
-    def testPajaritoLejosNoCambiaEstado(self) -> None:
-        self._llegarMadriguera()
-        self.nivel.interactuar()
-        self.assertEqual(self.nivel.secuencia.estado, EstadoNivel.MADRIGUERA)
-
-    def testPajaritoCercaAnimaARumi(self) -> None:
-        self._llegarMadriguera()
-        self.moverRumiA(1420)
-        self.nivel.interactuar()
-        self.assertEqual(self.nivel.secuencia.estado, EstadoNivel.PAJARITO)
-
-    def testSalirAumentaLuz(self) -> None:
-        self._hablarConPajarito()
-        self.moverRumiA(1680)
-        self.nivel.actualizarNarrativa()
-        self.assertEqual(self.nivel.rumi.luz, 0.65)
-
-    def testSalirQuitaEscondite(self) -> None:
-        self._hablarConPajarito()
-        self.moverRumiA(1680)
-        self.nivel.actualizarNarrativa()
-        self.assertFalse(self.nivel.rumi.estaEscondido)
-
-    def testCompletaDespuesDeSalir(self) -> None:
-        self._hablarConPajarito()
-        self.moverRumiA(1680)
-        self.nivel.actualizarNarrativa()
-        self.moverRumiA(self.nivel.metaX + 10)
-        self.nivel.actualizarNarrativa()
-        self.assertEqual(self.nivel.secuencia.estado, EstadoNivel.COMPLETADO)
-
-    def testReiniciarRestauraEstadoInicial(self) -> None:
-        self._hablarConPajarito()
-        self.nivel.reiniciar()
-        self.assertEqual(self.nivel.secuencia.estado, EstadoNivel.SEGUIR_PADRE)
-
-    def testReiniciarRestauraLuzInicial(self) -> None:
-        self._hablarConPajarito()
-        self.nivel.reiniciar()
-        self.assertEqual(self.nivel.rumi.luz, 0.28)
-
-    def testDialogoInicialExplicaControles(self) -> None:
-        self.assertIn("A/D", self.nivel.dialogo)
-
-    def testDialogoPajaritoDaSiguientePaso(self) -> None:
-        self._hablarConPajarito()
-        self.assertIn("próxima luz", self.nivel.dialogo)
-
-    def _llegarMadriguera(self) -> None:
-        self.moverRumiA(450)
-        self.nivel.actualizarNarrativa()
-        self.moverRumiA(850)
-        self.nivel.actualizarNarrativa()
-        self.moverRumiA(1200)
-        self.nivel.actualizarNarrativa()
-
-    def _hablarConPajarito(self) -> None:
-        self._llegarMadriguera()
-        self.moverRumiA(1420)
-        self.nivel.interactuar()
-
-
-if __name__ == "__main__":
-    unittest.main()
+    def testReinicioRestauraVidaYEnemigos(self):
+        nivel = NivelUno()
+        nivel.vitalidad.puntos = 1
+        nivel.escenario.enemigos[0].cambiarEstado(EstadoEnemigo.LIBERADO)
+        nivel.reiniciar()
+        self.assertEqual(nivel.vitalidad.puntos, 3)
+        self.assertFalse(nivel.escenario.enemigos[0].liberado)

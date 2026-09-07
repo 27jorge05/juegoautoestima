@@ -25,7 +25,7 @@ class EnemigoHostil:
     direccion: int = 1
     objetivo: Vector2D = field(default_factory=lambda: Vector2D(0, 0))
     radioDeteccion: float = 250.0
-    radioLuz: float = 110.0
+    radioLuz: float = 180.0
     duracionAviso: float = 0.65
     duracionAtaque: float = 0.8
     duracionRecuperacion: float = 1.1

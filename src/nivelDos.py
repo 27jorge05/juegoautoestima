@@ -24,10 +24,34 @@ class NivelDos:
         self.vitalidad = Vitalidad()
         self.estado = EstadoNivelDos.JUGANDO
         self.recargaLuz = 0.0
-        self.dialogo = 'Alcanza el Farol del Nombre. F libera criaturas; salta para esquivar sus embestidas.'
+        self.fHabilitada = True
+        self.dialogoBase = 'Prólogo: ocurrió un terremoto que separó a Rumi de su padre. Ya no lo encuentra. Busca el farol para guiarte por el camino.'
+        self.dialogo = self.dialogoBase
+        self.dialogoTemporal = self.dialogoBase
+        self.tiempoDialogo = 5.0
+        self.temblor = 0.0
+        self.ayudas = [
+            'Ignora a esos insectos: solo te están molestando.',
+            'Tú puedes. Yo puedo. Soy suficiente.',
+            'No dejes que los insectos decidan quién eres.',
+        ]
+        self.indiceAyuda = 0
+        self.terremotoIniciado = False
 
     def reiniciar(self):
         self.__init__(self.recursos)
+
+    def mostrarDialogo(self, texto, duracion=5.0):
+        self.dialogo = texto
+        self.dialogoTemporal = texto
+        self.tiempoDialogo = duracion
+
+    def actualizarDialogo(self, deltaTiempo):
+        if self.tiempoDialogo > 0:
+            self.tiempoDialogo = max(0.0, self.tiempoDialogo - deltaTiempo)
+            if self.tiempoDialogo == 0.0:
+                self.dialogo = self.dialogoBase
+                self.dialogoTemporal = self.dialogoBase
 
     def derrotar(self, motivo):
         self.vitalidad.puntos = 0
@@ -43,11 +67,15 @@ class NivelDos:
             return ResultadoActualizacionNivel()
         if self.estado != EstadoNivelDos.JUGANDO:
             return ResultadoActualizacionNivel()
+        self.actualizarDialogo(deltaTiempo)
+        self.temblor = max(0.0, self.temblor - deltaTiempo)
         self.vitalidad.actualizar(deltaTiempo)
         self.recargaLuz = max(0.0, self.recargaLuz - deltaTiempo)
         activarLuz = entrada.usarGarras and self.recargaLuz == 0
         if activarLuz:
-            self.recargaLuz = 0.9
+            self.recargaLuz = 0.65
+            self.indiceAyuda = (self.indiceAyuda + 1) % len(self.ayudas)
+            self.mostrarDialogo(self.ayudas[self.indiceAyuda], 5.0)
         entrada = replace(entrada, usarGarras=activarLuz)
         anteriorY = self.rumi.posicion.y
         estabaEnSuelo = self.rumi.estaEnSuelo
@@ -70,7 +98,15 @@ class NivelDos:
             self.estado = EstadoNivelDos.COMPLETADO
             self.rumi.velocidad = Vector2D(0,0)
             self.dialogo = 'Farol recuperado. Las voces del Velo no decidieron tu camino. Escape: menú; R: repetir.'
+        if self.dialogo == self.dialogoBase and not self.terremotoIniciado:
+            self.terremotoIniciado = True
+            self.temblor = 2.4
+            self.dialogo = '¡Un terremoto! ¡Corre!'
+            self.dialogoTemporal = self.dialogo
+            self.tiempoDialogo = 2.0
         return ResultadoActualizacionNivel(
             saltoIniciado=salto, aterrizaje=aterrizaje, golpeRecibido=golpe,
             derrotaIniciada=self.estado == EstadoNivelDos.DERROTADO,
+            nivelCompletado=self.estado == EstadoNivelDos.COMPLETADO,
+            terremotoIniciado=self.terremotoIniciado,
         )

@@ -151,10 +151,10 @@ class PruebasReglasDos(unittest.TestCase):
     def testRecargaImpideSpamDeLuz(self):
         nivel=NivelDos()
         self.actualizar(nivel,EntradaJugador(usarGarras=True))
-        self.assertEqual(nivel.recargaLuz,.9)
+        self.assertEqual(nivel.recargaLuz,.65)
         self.actualizar(nivel,EntradaJugador(usarGarras=True),.4)
         self.assertFalse(nivel.rumi.garrasActivas)
-        self.actualizar(nivel,EntradaJugador(usarGarras=True),.5)
+        self.actualizar(nivel,EntradaJugador(usarGarras=True),.25)
         self.assertTrue(nivel.rumi.garrasActivas)
 
     def testFinalCongelaYSePuedeRepetir(self):

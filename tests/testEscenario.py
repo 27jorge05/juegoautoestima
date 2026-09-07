@@ -19,11 +19,11 @@ class PruebasEscenario(unittest.TestCase):
 
     def testFabricaNoComparteElementos(self):
         a, b = NivelUno(), NivelUno()
-        a.niebla.activar()
-        self.assertFalse(b.niebla.activa)
+        a.escenario.enemigos[0].posicion.x = -1
+        self.assertGreater(b.escenario.enemigos[0].posicion.x, 0)
         a.reiniciar()
-        self.assertFalse(a.niebla.activa)
-        self.assertIn(a.niebla, a.escenario.elementos)
+        self.assertGreater(a.escenario.enemigos[0].posicion.x, 0)
+        self.assertFalse(any(elemento.__class__.__name__ == "NieblaNivel" for elemento in a.escenario.elementos))
 
     def testDecoracionNoEsSuelo(self):
         nivel = NivelUno()

@@ -48,6 +48,11 @@ class EscenaNivel:
             FUERZA_SALTO,
             ALTO_VENTANA + 120,
         )
+        if getattr(self.nivel, 'terremotoIniciado', False):
+            self.sonidos.reproducirDerrumbe()
+            self.nivel.terremotoIniciado = False
+        if resultado.golpeRecibido:
+            self.dibujador.registrarGolpe()
         if entrada.reiniciar or resultado.reiniciadoPorCaida:
             self.dibujador.reiniciar()
             self.ritmoPasos = RitmoPasos()
@@ -63,7 +68,6 @@ class EscenaNivel:
             self.sonidos.reproducirAterrizaje()
         if self.ritmoPasos.actualizar(abs(rumi.velocidad.x) > 1.0, rumi.estaEnSuelo, deltaTiempo):
             self.sonidos.reproducirPaso()
-        if resultado.terremotoIniciado:
+        if resultado.terremotoIniciado or resultado.nivelCompletado:
             self.sonidos.reproducirDerrumbe()
         self.sonidos.actualizar(deltaTiempo)
-

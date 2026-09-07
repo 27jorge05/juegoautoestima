@@ -42,6 +42,4 @@ class EscenarioNivel:
         accionActivada = False
         for elemento in self.elementos:
             accionActivada = elemento.actualizar(nivel, solicitaSegundoSalto, deltaTiempo) or accionActivada
-        for enemigo in self.enemigos:
-            enemigo.actualizar(nivel.rumi, deltaTiempo)
         return accionActivada

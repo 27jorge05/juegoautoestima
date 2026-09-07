@@ -12,6 +12,7 @@ from .dibujadorEscenario import DibujadorEscenario
 from .dominio import EstadoNivel
 from .estadoVisual import obtenerAnimacionRumi
 from .nivelUno import NivelUno
+from .indicadoresVida import CorazonesVida, DestelloDanio
 
 
 @dataclass
@@ -33,6 +34,8 @@ class DibujadorNivelUno:
         self.animacionRumi = crearAnimacionRumi(carpetaPersonajes / "rumi_sprite_sheet_v3.png")
         self.animacionPadre = crearAnimacionPadre(carpetaPersonajes / "padre_sprite_sheet_v1.png")
         self.efectosSalto: list[EfectoSalto] = []
+        self.destelloDanio = DestelloDanio()
+        self.corazones = CorazonesVida(self.fuente)
 
     def reiniciar(self):
         self.efectosSalto.clear()
@@ -43,6 +46,7 @@ class DibujadorNivelUno:
         for efecto in self.efectosSalto:
             efecto.tiempoRestante -= deltaTiempo
         self.efectosSalto = [e for e in self.efectosSalto if e.tiempoRestante > 0]
+        self.destelloDanio.actualizar(deltaTiempo)
         rumi = nivel.rumi
         self.animacionRumi.actualizar(obtenerAnimacionRumi(rumi.velocidad.x, rumi.velocidad.y, rumi.estaEnSuelo, rumi.garrasActivas), deltaTiempo)
         self.animacionPadre.actualizar("reposo" if nivel.secuencia.estado == EstadoNivel.SEGUIR_PADRE else "guiar", deltaTiempo)
@@ -50,14 +54,34 @@ class DibujadorNivelUno:
     def registrarSalto(self, x: float, y: float) -> None:
         self.efectosSalto.append(EfectoSalto(x, y))
 
+    def registrarGolpe(self) -> None:
+        self.destelloDanio.activar()
+
     def dibujar(self, nivel: NivelUno, desplazamientoCamara: float) -> None:
         self.dibujadorEscenario.dibujarMundo(nivel.escenario, nivel.padre, desplazamientoCamara)
         self.dibujarEfectosSalto(desplazamientoCamara)
         self.dibujarPadre(nivel, desplazamientoCamara)
-        self.dibujarPajarito(nivel, desplazamientoCamara)
         self.dibujarRumi(nivel, desplazamientoCamara)
         self.dibujadorEscenario.dibujarFrente(nivel.escenario, nivel.padre, desplazamientoCamara)
         self.dibujarInterfaz(nivel)
+        if nivel.secuencia.estado == EstadoNivel.COMPLETADO:
+            self.dibujarFinal(nivel)
+        self.destelloDanio.dibujar(self.pantalla)
+
+    def dibujarFinal(self, nivel: NivelUno) -> None:
+        w, h = self.pantalla.get_size()
+        capa = pygame.Surface((w, h), pygame.SRCALPHA)
+        capa.fill((10, 12, 26, 168))
+        self.pantalla.blit(capa, (0, 0))
+        textos = (
+            "¡Lo encontraste!",
+            "Papá: ¡Corre! El camino se rompe y el suelo tiembla.",
+            "Siguiente nivel: Espejos de Niebla | R: repetir | Escape: menú",
+        )
+        for indice, texto in enumerate(textos):
+            fuente = self.fuenteTitulo if indice == 0 else self.fuente
+            imagen = fuente.render(texto, True, (240, 230, 255))
+            self.pantalla.blit(imagen, ((w - imagen.get_width()) // 2, h // 2 - 70 + indice * 42))
 
     def dibujarEfectosSalto(self, desplazamientoCamara: float) -> None:
         for efecto in self.efectosSalto:
@@ -82,17 +106,17 @@ class DibujadorNivelUno:
         if -90 < x < ANCHO_VENTANA + 90:
             self.animacionPadre.dibujarAnclado(self.pantalla, (int(x + nivel.padre.ancho / 2), int(y + nivel.padre.alto)), (176, 157), True)
 
-    def dibujarPajarito(self, nivel: NivelUno, desplazamientoCamara: float) -> None:
-        x = int(nivel.pajaritoPosicion.x - desplazamientoCamara)
-        y = int(nivel.pajaritoPosicion.y)
-        if -40 < x < ANCHO_VENTANA + 40:
-            pygame.draw.circle(self.pantalla, (255, 220, 82), (x, y), 13)
-            pygame.draw.polygon(self.pantalla, (247, 184, 56), [(x + 11, y), (x + 27, y + 5), (x + 11, y + 9)])
-            pygame.draw.circle(self.pantalla, (31, 35, 46), (x - 4, y - 2), 2)
-
     def dibujarInterfaz(self, nivel: NivelUno) -> None:
         titulo = self.fuenteTitulo.render("Rumi: El Barranco del Velo", True, (255, 232, 177))
         self.pantalla.blit(titulo, (28, 22))
+        self.corazones.dibujar(
+            self.pantalla,
+            nivel.vitalidad.puntos,
+            3,
+            ANCHO_VENTANA - 180,
+            27,
+            self.destelloDanio.activo,
+        )
         fondo = pygame.Surface((ANCHO_VENTANA - 56, 112), pygame.SRCALPHA)
         fondo.fill((11, 17, 25, 210))
         self.pantalla.blit(fondo, (28, ALTO_VENTANA - 138))
@@ -100,7 +124,7 @@ class DibujadorNivelUno:
             texto = self.fuente.render(linea, True, (242, 245, 248))
             self.pantalla.blit(texto, (48, ALTO_VENTANA - 116 + indice * 27))
         estado = self.fuente.render(
-            "Espacio: salto  |  En el aire, junto a roca: impulso  |  F: garras",
+            f"Espacio: salto  |  F: luz ({'lista' if nivel.recargaLuz == 0 else f'{nivel.recargaLuz:.1f}s'})  |  R: reiniciar",
             True,
             (181, 211, 222),
         )

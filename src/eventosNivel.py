@@ -12,5 +12,6 @@ class ResultadoActualizacionNivel:
     reiniciadoPorCaida: bool = False
     golpeRecibido: bool = False
     derrotaIniciada: bool = False
+    nivelCompletado: bool = False
 
 
