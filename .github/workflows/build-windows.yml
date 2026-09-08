@@ -1,0 +1,56 @@
+name: Compilar ejecutable de Windows
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: read
+  artifact-metadata: write
+
+jobs:
+  empaquetar:
+    name: Pruebas y ejecutable Windows x64
+    runs-on: windows-latest
+
+    steps:
+      - name: Obtener código
+        uses: actions/checkout@v4
+
+      - name: Preparar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+
+      - name: Ejecutar pruebas
+        shell: pwsh
+        run: |
+          $env:SDL_VIDEODRIVER = 'dummy'
+          $env:SDL_AUDIODRIVER = 'dummy'
+          python -m unittest discover -s tests -p 'test*.py'
+
+      - name: Generar RumiAventura.exe
+        run: python -m PyInstaller --noconfirm --clean main.spec
+
+      - name: Verificar ejecutable
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'dist\RumiAventura.exe')) {
+            throw 'PyInstaller no generó dist\RumiAventura.exe.'
+          }
+
+      - name: Publicar RumiAventura.exe
+        uses: actions/upload-artifact@v7
+        with:
+          name: RumiAventura-windows-x64
+          path: dist/RumiAventura.exe
+          if-no-files-found: error
+          retention-days: 30

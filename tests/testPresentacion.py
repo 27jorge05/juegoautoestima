@@ -85,8 +85,11 @@ class PruebasPresentacion(unittest.TestCase):
     def testMenuDibujaMedallonesDeZorroConNumero(self):
         menu = MenuPrincipal()
         DibujadorMenu(self.pantalla).dibujar(menu)
-        # El centro lleva el número y el borde mantiene la paleta del zorro.
-        self.assertEqual(self.pantalla.get_at((472, 235))[:3], (52, 43, 51))
+        # El medallón usa el anillo y la paleta del zorro. No se inspecciona
+        # el píxel del número: el suavizado de fuentes varía entre sistemas.
+        self.assertEqual(
+            self.pantalla.get_at((472, 172))[:3], (255, 237, 151)
+        )
         self.assertEqual(
             self.pantalla.get_at((472, 192))[:3], DibujadorMenu.COLOR_ZORRO
         )

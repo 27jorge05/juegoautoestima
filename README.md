@@ -25,6 +25,16 @@ El resultado queda en `dist\\RumiAventura.exe`. La carpeta `dist/` no se
 versiona porque es un producto de compilación; el código, los recursos y
 `main.spec` sí se incluyen al clonar.
 
+### Compilar sin una computadora Windows
+
+El flujo [Compilar ejecutable de Windows](.github/workflows/build-windows.yml)
+usa un runner Windows x64 de GitHub Actions. Después de subir el repositorio a
+GitHub, abre **Actions**, elige ese flujo y pulsa **Run workflow**. Al terminar
+sin errores, descarga el artefacto **RumiAventura-windows-x64**: contiene
+`RumiAventura.exe` listo para Windows. El flujo instala Python 3.11, ejecuta
+las pruebas y solo publica el ejecutable si el archivo existe. El flujo usa la
+versión de Node 24 de la acción oficial de artefactos.
+
 ## Controles
 
 - Flechas o A/D: moverse; W/S o flechas verticales: navegar el menú.
