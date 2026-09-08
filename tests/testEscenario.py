@@ -1,9 +1,9 @@
 import unittest
-from src.nivelUno import NivelUno
-from src.plataformaNivel import PlataformaNivel, TipoTerreno
-from src.dominio import Rumi, Vector2D, RectanguloLogico
-from src.escenarioNivel import EscenarioNivel
-from src.recursosNivel import crearRecursosBarrancoVelo, COLORES_TERRENO
+from src.niveles.nivelUno import NivelUno
+from src.dominio.plataformaNivel import PlataformaNivel, TipoTerreno
+from src.dominio.dominio import Rumi, Vector2D, RectanguloLogico
+from src.mundo.escenarioNivel import EscenarioNivel
+from src.mundo.recursosNivel import crearRecursosBarrancoVelo, COLORES_TERRENO
 
 
 class PruebasEscenario(unittest.TestCase):

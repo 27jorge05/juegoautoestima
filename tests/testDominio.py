@@ -2,7 +2,7 @@
 
 import unittest
 
-from src.dominio import EntradaJugador, EstadoNivel, RectanguloLogico, Rumi, SecuenciaNivelUno, Vector2D
+from src.dominio.dominio import EntradaJugador, EstadoNivel, RectanguloLogico, Rumi, SecuenciaNivelUno, Vector2D
 
 
 class PruebasRectangulo(unittest.TestCase):

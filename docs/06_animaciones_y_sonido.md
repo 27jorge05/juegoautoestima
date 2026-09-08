@@ -2,7 +2,7 @@
 
 ## Decisión
 
-Rumi y su padre se renderizan desde hojas de sprites pixel art. La física y la secuencia narrativa permanecen en `src/dominio.py` y `src/nivelUno.py`; elegir una pose es una adaptación visual en `src/estadoVisual.py`.
+Rumi y Mr. Fox se renderizan desde hojas de sprites pixel art. La física y la secuencia narrativa permanecen en `src/dominio/dominio.py` y `src/niveles/nivelUno.py`; elegir una pose es una adaptación visual en `src/presentacion/estadoVisual.py`.
 
 ## Rumi
 
@@ -18,7 +18,7 @@ Rumi y su padre se renderizan desde hojas de sprites pixel art. La física y la 
 
 ## Pasos
 
-`src/sonidos.py` sintetiza al iniciar el juego un toque corto y suave para las pisadas. No descarga audios, no guarda datos y falla silenciosamente si el equipo no tiene audio disponible. `RitmoPasos` limita el efecto a un paso cada 0.19 segundos y solo se activa al correr sobre una plataforma.
+`src/audio/sonidos.py` sintetiza al iniciar el juego un toque corto y suave para las pisadas. No descarga audios, no guarda datos y falla silenciosamente si el equipo no tiene audio disponible. `RitmoPasos` limita el efecto a un paso cada 0.19 segundos y solo se activa al correr sobre una plataforma.
 
 ## Verificación
 

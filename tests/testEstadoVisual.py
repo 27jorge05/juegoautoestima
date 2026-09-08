@@ -1,7 +1,7 @@
 import unittest
 
-from src.estadoVisual import obtenerAnimacionRumi
-from src.sonidos import RitmoPasos
+from src.presentacion.estadoVisual import obtenerAnimacionRumi
+from src.audio.sonidos import RitmoPasos
 
 
 class PruebasEstadoVisual(unittest.TestCase):

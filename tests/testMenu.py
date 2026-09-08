@@ -2,7 +2,7 @@
 
 import unittest
 
-from src.menu import MenuPrincipal
+from src.aplicacion.menu import MenuPrincipal
 
 
 class PruebasMenu(unittest.TestCase):
@@ -12,8 +12,8 @@ class PruebasMenu(unittest.TestCase):
     def testNivelDosEstaDisponible(self) -> None:
         self.assertTrue(MenuPrincipal().seleccionarNivel(2))
 
-    def testNivelTresSigueBloqueado(self):
-        self.assertFalse(MenuPrincipal().seleccionarNivel(3))
+    def testNivelTresEstaDisponible(self):
+        self.assertTrue(MenuPrincipal().seleccionarNivel(3))
 
 
 if __name__ == "__main__":
